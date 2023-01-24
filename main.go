@@ -2,6 +2,7 @@ package main
 
 import (
 	"bank/handler"
+	"bank/logs"
 	"bank/repository"
 	"bank/service"
 	"fmt"
@@ -21,22 +22,22 @@ func main() {
 	initializeDatabase()
 	db := initializeDatabase()
 
-	/*For swap Repository Database Adapter*/
 	customerRepository := repository.NewCustomerRepositoryDB(db)
-	customerRepositoryMock := repository.InitializeCustomerRepositoryMock()
-	_ = customerRepositoryMock
-
-	/*For swap Repository Service Adapter*/
 	customer_service := service.NewCustomerService(customerRepository)
-
-	/*For swap Repository Handler Adapter*/
 	customerHandler := handler.InitializeCustomerHandler(customer_service)
+
+	account_repository_db := repository.InitializeAccountRepositoryDB(db)
+	account_service := service.InitializeAccountService(account_repository_db)
+	account_handler := handler.NewAccountHandler(account_service)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/customers", customerHandler.GetCustomers).Methods(http.MethodGet)
 	router.HandleFunc("/customers/{customer_id:[0-9]+}", customerHandler.GetCustomer).Methods(http.MethodGet)
 
-	fmt.Printf("Started Server at %v", viper.GetString("app.port"))
+	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts", account_handler.GetAccounts).Methods(http.MethodGet)
+	router.HandleFunc("/customers/{customer_id:[0-9]+}/accounts", account_handler.NewAccount).Methods(http.MethodPost)
+
+	logs.Info("Banking service started at port " + viper.GetString("app.port"))
 	http.ListenAndServe(":8000", router)
 
 }
